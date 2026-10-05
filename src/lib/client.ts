@@ -1615,7 +1615,8 @@ export default class BACnetClient extends TypedEventEmitter<BACnetClientEvents> 
 		objectId: BACNetObjectID,
 		idxBegin: number,
 		quantity: number,
-		options: ServiceOptions = {},
+		// propertyId defaults to LOG_BUFFER for backwards compatibility
+		options: ServiceOptions & { propertyId?: number } = {},
 	): Promise<ReadRangeAcknowledge> {
 		const settings = {
 			maxSegments:
@@ -1646,7 +1647,7 @@ export default class BACnetClient extends TypedEventEmitter<BACnetClientEvents> 
 		ReadRange.encode(
 			buffer,
 			objectId,
-			PropertyIdentifier.LOG_BUFFER,
+			options.propertyId ?? PropertyIdentifier.LOG_BUFFER,
 			ASN1_ARRAY_ALL,
 			ReadRangeType.BY_POSITION,
 			idxBegin,

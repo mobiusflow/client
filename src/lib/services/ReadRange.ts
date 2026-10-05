@@ -1,5 +1,5 @@
 import * as baAsn1 from '../asn1'
-import { ASN1_ARRAY_ALL, ReadRangeType } from '../enum'
+import { ASN1_ARRAY_ALL, PropertyIdentifier, ReadRangeType } from '../enum'
 import {
 	EncodeBuffer,
 	BACNetObjectID,
@@ -310,6 +310,34 @@ export default class ReadRange extends BacnetAckService {
 		const itemCount = decodedValue.value
 		if (!baAsn1.decodeIsOpeningTag(buffer, offset + len)) return undefined
 		len++
+		if (property.id === PropertyIdentifier.ACTIVE_COV_SUBSCRIPTIONS) {
+			// COV subscription items are context-tagged and cannot be decoded by
+			// decodeRange or located with the raw closing tag byte scan
+			const subscriptions: unknown[] = []
+			const covRangeStart = offset + len
+			while (
+				len < apduLen &&
+				!baAsn1.decodeIsClosingTagNumber(buffer, offset + len, 5)
+			) {
+				const sub = baAsn1.decodeCovSubscription(
+					buffer,
+					offset + len,
+					apduLen - len,
+				)
+				if (!sub) return undefined
+				subscriptions.push(sub.value)
+				len += sub.len
+			}
+			return {
+				objectId,
+				property,
+				resultFlag,
+				itemCount,
+				rangeBuffer: buffer.slice(covRangeStart, offset + len),
+				values: subscriptions,
+				len,
+			} as ReadRangeAcknowledge
+		}
 		const decodedRange = baAsn1.decodeRange(
 			buffer,
 			offset + len,
